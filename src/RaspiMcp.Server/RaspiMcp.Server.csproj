@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -29,6 +30,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/ctacke/RaspiMcp</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
 
 </Project>

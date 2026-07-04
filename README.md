@@ -1,5 +1,9 @@
 # RaspiMcp
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ctacke/RaspiMcp/main/assets/icon.png" width="128" height="128" alt="RaspiMcp icon" />
+</p>
+
 A production-quality .NET 10 MCP (Model Context Protocol) server for controlling Raspberry Pi devices over SSH. Connect Claude Code or any MCP-compatible AI assistant directly to your Pi fleet.
 
 ## What is RaspiMcp?

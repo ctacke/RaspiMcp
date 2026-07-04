@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/Solution Items/">
+    <File Path="assets/icon.png" />
     <File Path="docs/architecture.md" />
     <File Path="docs/plugin-development.md" />
     <File Path="docs/publishing.md" />
