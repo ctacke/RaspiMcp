@@ -10,14 +10,14 @@ namespace RaspiMcp.Ssh.Services;
 public class HostManager : IHostManager
 {
     private readonly IOptionsMonitor<SshPluginOptions> _options;
-    private readonly ISshService _sshService;
+    private readonly Lazy<ISshService> _sshService;
     private readonly ILogger<HostManager> _logger;
     private readonly object _lock = new();
     private string _currentAlias;
 
     public HostManager(
         IOptionsMonitor<SshPluginOptions> options,
-        ISshService sshService,
+        Lazy<ISshService> sshService,
         ILogger<HostManager> logger)
     {
         _options = options;
@@ -53,8 +53,8 @@ public class HostManager : IHostManager
             _currentAlias = alias;
         }
 
-        _sshService.Disconnect();
-        await _sshService.EnsureConnectedAsync(ct);
+        _sshService.Value.Disconnect();
+        await _sshService.Value.EnsureConnectedAsync(ct);
 
         _logger.LogInformation("Host switched from '{Previous}' to '{New}' ({Host})",
             previousAlias, alias, config.Host);

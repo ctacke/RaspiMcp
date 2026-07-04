@@ -31,7 +31,7 @@ public class HostManagerTests
     public void GetCurrentHost_ReturnsInitialHost()
     {
         var ssh = new Mock<ISshService>();
-        var manager = new HostManager(CreateOptions(TwoHostOptions()), ssh.Object,
+        var manager = new HostManager(CreateOptions(TwoHostOptions()), new Lazy<ISshService>(() => ssh.Object),
             NullLogger<HostManager>.Instance);
 
         var info = manager.GetCurrentHost();
@@ -46,7 +46,7 @@ public class HostManagerTests
     {
         var ssh = new Mock<ISshService>();
         ssh.Setup(s => s.EnsureConnectedAsync(default)).Returns(Task.CompletedTask);
-        var manager = new HostManager(CreateOptions(TwoHostOptions()), ssh.Object,
+        var manager = new HostManager(CreateOptions(TwoHostOptions()), new Lazy<ISshService>(() => ssh.Object),
             NullLogger<HostManager>.Instance);
 
         var info = await manager.SwitchHostAsync("host-b");
@@ -60,7 +60,7 @@ public class HostManagerTests
     public async Task SwitchHostAsync_InvalidAlias_Throws()
     {
         var ssh = new Mock<ISshService>();
-        var manager = new HostManager(CreateOptions(TwoHostOptions()), ssh.Object,
+        var manager = new HostManager(CreateOptions(TwoHostOptions()), new Lazy<ISshService>(() => ssh.Object),
             NullLogger<HostManager>.Instance);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -72,7 +72,7 @@ public class HostManagerTests
     {
         var ssh = new Mock<ISshService>();
         ssh.Setup(s => s.EnsureConnectedAsync(default)).Returns(Task.CompletedTask);
-        var manager = new HostManager(CreateOptions(TwoHostOptions()), ssh.Object,
+        var manager = new HostManager(CreateOptions(TwoHostOptions()), new Lazy<ISshService>(() => ssh.Object),
             NullLogger<HostManager>.Instance);
 
         await manager.SwitchHostAsync("host-b");
@@ -84,7 +84,7 @@ public class HostManagerTests
     public void GetHostAliases_ReturnsAllConfiguredAliases()
     {
         var ssh = new Mock<ISshService>();
-        var manager = new HostManager(CreateOptions(TwoHostOptions()), ssh.Object,
+        var manager = new HostManager(CreateOptions(TwoHostOptions()), new Lazy<ISshService>(() => ssh.Object),
             NullLogger<HostManager>.Instance);
 
         var aliases = manager.GetHostAliases();

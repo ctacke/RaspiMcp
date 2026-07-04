@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using RaspiMcp.Core.Configuration;
@@ -14,15 +15,35 @@ public class SshTools
     private readonly IHostManager _hostManager;
     private readonly ICommandExecutor _executor;
     private readonly IOptions<SshPluginOptions> _options;
+    private readonly ILogger<SshTools> _logger;
 
     public SshTools(
         IHostManager hostManager,
         ICommandExecutor executor,
-        IOptions<SshPluginOptions> options)
+        IOptions<SshPluginOptions> options,
+        ILogger<SshTools> logger)
     {
         _hostManager = hostManager;
         _executor = executor;
         _options = options;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Converts any failure (validation rejection, SSH auth/connection errors, or
+    /// unexpected bugs) into the same structured JSON payload, so a failure always
+    /// carries a message the MCP client can read and relay — instead of an
+    /// unhandled exception with no client-visible detail.
+    /// </summary>
+    private string HandleError(Exception ex)
+    {
+        _logger.LogWarning(ex, "Tool call failed");
+        return JsonSerializer.Serialize(new
+        {
+            error = ex.Message,
+            errorType = ex.GetType().Name,
+            rejected = true
+        });
     }
 
     [McpServerTool, Description("Returns the currently active SSH host: alias, IP address, and username.")]
@@ -56,9 +77,9 @@ public class SshTools
                 info.Username
             });
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message });
+            return HandleError(ex);
         }
     }
 
@@ -78,9 +99,9 @@ public class SshTools
                 durationMs = result.Duration.TotalMilliseconds
             });
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 
@@ -94,9 +115,9 @@ public class SshTools
             var result = await _executor.ExecuteAsync($"cat {EscapePath(path)}", ct);
             return FormatResult(result);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 
@@ -110,9 +131,9 @@ public class SshTools
             var result = await _executor.ExecuteAsync($"ls -lah {EscapePath(path)}", ct);
             return FormatResult(result);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 
@@ -126,9 +147,9 @@ public class SshTools
             var result = await _executor.ExecuteAsync($"stat {EscapePath(path)}", ct);
             return FormatResult(result);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 
@@ -144,9 +165,9 @@ public class SshTools
             var exists = result.Stdout.Trim() == "true";
             return JsonSerializer.Serialize(new { path, exists });
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 
@@ -161,9 +182,9 @@ public class SshTools
             var result = await _executor.ExecuteAsync($"tail -n {lines} {EscapePath(path)}", ct);
             return FormatResult(result);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 
@@ -177,9 +198,9 @@ public class SshTools
             var result = await _executor.ExecuteAsync($"systemctl status {EscapeArg(service)}", ct);
             return FormatResult(result);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 
@@ -195,9 +216,9 @@ public class SshTools
                 $"journalctl -u {EscapeArg(service)} -n {lines} --no-pager", ct);
             return FormatResult(result);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message, rejected = true });
+            return HandleError(ex);
         }
     }
 

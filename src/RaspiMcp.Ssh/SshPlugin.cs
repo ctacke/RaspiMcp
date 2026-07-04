@@ -16,13 +16,18 @@ public class SshPlugin : IMcpPlugin
     {
         services.Configure<SshPluginOptions>(configuration.GetSection("Ssh"));
 
-        // Register HostManager as both its concrete type and the IHostManager interface
-        // so that SshService can depend on the concrete HostManager directly (avoiding
-        // a circular dependency through ISshService ↔ IHostManager).
         services.AddSingleton<HostManager>();
         services.AddSingleton<IHostManager>(sp => sp.GetRequiredService<HostManager>());
 
         services.AddSingleton<ISshService, SshService>();
+
+        // HostManager and SshService each need the other (HostManager forces a
+        // reconnect on switch_host; SshService reads the current host config).
+        // Injecting ISshService lazily into HostManager defers resolving it until
+        // SwitchHostAsync actually runs, by which point HostManager's own
+        // construction is already complete — this breaks the circular
+        // dependency the DI container would otherwise detect at startup.
+        services.AddSingleton(sp => new Lazy<ISshService>(() => sp.GetRequiredService<ISshService>()));
         services.AddSingleton<ICommandExecutor, CommandExecutor>();
         services.AddSingleton<IAuditLogger, AuditLogger>();
         services.AddSingleton<ICommandValidator, CommandValidator>();

@@ -14,7 +14,7 @@ paths are supported, and a release publishes both:
 
 Both are built and published automatically by
 [`.github/workflows/release.yml`](../.github/workflows/release.yml) whenever
-a tag matching `vX.X` (e.g. `v1.0`, `v2.3`) is pushed. The steps below are for
+a tag matching `vX.X` or `vX.X.X` (e.g. `v1.0`, `v0.9.1`, `v2.3`) is pushed. The steps below are for
 a manual/local release, or for debugging that workflow.
 
 ---
@@ -81,9 +81,9 @@ gh release create v$VERSION \
   --generate-notes
 ```
 
-> **Tagging convention:** tags use the two-part `vX.X` form (`v1.0`, `v2.3`,
-> `v2.10`) — no patch segment. This is what the automated release workflow
-> watches for.
+> **Tagging convention:** tags use `vX.X` or `vX.X.X` (`v1.0`, `v0.9.1`,
+> `v2.3`, `v2.3.10`) — the patch segment is optional. This is what the
+> automated release workflow watches for.
 
 ---
 
@@ -117,9 +117,9 @@ git tag v1.1
 git push origin v1.1
 ```
 
-pushing a `vX.X` tag runs [`.github/workflows/release.yml`](../.github/workflows/release.yml), which:
+pushing a `vX.X` or `vX.X.X` tag runs [`.github/workflows/release.yml`](../.github/workflows/release.yml), which:
 
-1. Validates the tag matches `vX.X` exactly (rejects `v1.0.0`, `v1`, `v1.0-beta`, etc. before any build runs)
+1. Validates the tag matches `vX.X` or `vX.X.X` (rejects `v1`, `v1.0-beta`, etc. before any build runs)
 2. Builds and runs the full test suite
 3. Publishes self-contained binaries for `win-x64`, `linux-x64`, `osx-x64`, `osx-arm64`, zips each, and attaches them to a new GitHub Release
 4. Packs the NuGet tool package and pushes it to NuGet.org
@@ -150,35 +150,26 @@ no long-lived secret to rotate or leak.
 
 ## Installing a release
 
-Both paths below configure the Pi connection with environment variables in
-the `mcp.json` entry rather than a separate config file — RaspiMcp doesn't
-need special-casing among your other MCP servers, and it sidesteps relying
-on whatever working directory the MCP client happens to launch the process
-with. `.NET`'s config pipeline layers environment variables over
-`appsettings.json` automatically, using `__` (double underscore) to express
-nesting: `Ssh__Hosts__<alias>__Host`, `...__Username`, and
-`...__Password` / `...__PrivateKey`.
+Both paths below register RaspiMcp with the `claude mcp add` CLI, passing
+the Pi connection details as environment variables — this is the supported
+way to add a server at user scope (available across all projects); there's
+no user-level config file meant to be hand-edited. `.NET`'s config pipeline
+layers environment variables over `appsettings.json` automatically, using
+`__` (double underscore) to express nesting: `Ssh__Hosts__<alias>__Host`,
+`...__Username`, and `...__Password` / `...__PrivateKey`.
+
+After running `claude mcp add`, restart your `claude` session (exit and
+relaunch) — a server added while a session is already running won't appear
+in `/mcp` until you do.
 
 ### Release binary
 
 1. Download the archive for your OS from the
    [Releases page](../../../releases) and extract it.
-2. Point Claude Code at the extracted executable, with the Pi's details in `env`:
+2. Register it, with the Pi's details as `--env` flags:
 
-   ```json
-   {
-     "mcpServers": {
-       "raspi": {
-         "command": "C:/tools/raspi-mcp/RaspiMcp.Server.exe",
-         "env": {
-           "Ssh__CurrentHost": "orleans2",
-           "Ssh__Hosts__orleans2__Host": "orleans2.local",
-           "Ssh__Hosts__orleans2__Username": "pi",
-           "Ssh__Hosts__orleans2__Password": "secret"
-         }
-       }
-     }
-   }
+   ```
+   claude mcp add --scope user raspi-mcp --env Ssh__CurrentHost=orleans2 --env Ssh__Hosts__orleans2__Host=orleans2.local --env Ssh__Hosts__orleans2__Username=pi --env Ssh__Hosts__orleans2__Password=secret -- C:/tools/raspi-mcp/RaspiMcp.Server.exe
    ```
 
    (Use the platform-appropriate path and drop the `.exe` extension on
@@ -193,27 +184,15 @@ dotnet tool install -g RaspiMcp.Server
 No source configuration or authentication needed — nuget.org is the default
 package source for the .NET SDK.
 
-```json
-{
-  "mcpServers": {
-    "raspi-mcp": {
-      "command": "raspi-mcp",
-      "env": {
-        "Ssh__CurrentHost": "orleans2",
-        "Ssh__Hosts__orleans2__Host": "orleans2.local",
-        "Ssh__Hosts__orleans2__Username": "pi",
-        "Ssh__Hosts__orleans2__Password": "secret"
-      }
-    }
-  }
-}
+```
+claude mcp add --scope user raspi-mcp --env Ssh__CurrentHost=orleans2 --env Ssh__Hosts__orleans2__Host=orleans2.local --env Ssh__Hosts__orleans2__Username=pi --env Ssh__Hosts__orleans2__Password=secret -- raspi-mcp
 ```
 
 If you'd rather predefine multiple Pi hosts for `switch_host` without a wall
-of `env` entries, copy `appsettings.json.example` to `appsettings.json`
-instead, place it in a known folder, and set `"cwd"` explicitly in the
-`mcp.json` entry to that folder. `env` values still take precedence over the
-file when both are present.
+of `--env` flags, copy `appsettings.json.example` to `appsettings.json`
+instead, place it in a known folder, and pass `--cwd <that folder>` to
+`claude mcp add`. `env` values still take precedence over the file when both
+are present.
 
 Either way, custom plugins are added by dropping compiled DLLs into a
 `plugins/` folder next to the server binary — see

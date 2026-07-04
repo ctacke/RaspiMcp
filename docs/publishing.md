@@ -118,7 +118,7 @@ gh release create v1.0 \
 
 All of the above is already automated in
 [`.github/workflows/release.yml`](../.github/workflows/release.yml), which
-runs on every `vX.X` tag push (e.g. `v1.0`, `v2.3` — no patch segment). It
+runs on every `vX.X` or `vX.X.X` tag push (e.g. `v1.0`, `v0.9.1`, `v2.3`). It
 validates the tag format, runs the test suite, publishes self-contained
 binaries for `win-x64`/`linux-x64`/`osx-x64`/`osx-arm64` and attaches them
 to a GitHub Release, then packs and pushes the NuGet tool package to
@@ -141,8 +141,8 @@ manual steps for testing the pipeline locally.
 
 ## Versioning
 
-Tags use the two-part `vX.X` form (`v1.0`, `v2.3`, `v2.10`) — no patch
-segment. To release a new version:
+Tags use `vX.X` or `vX.X.X` (`v1.0`, `v0.9.1`, `v2.3`, `v2.3.10`) — the patch
+segment is optional. To release a new version:
 
 ```bash
 git tag v1.1
@@ -175,70 +175,36 @@ extract it, and place it somewhere on your `PATH`.
 
 ## Configure Claude Code
 
-After installation, add RaspiMcp to your Claude Code MCP configuration
-(`~/.claude/mcp.json` or project `.mcp.json`), passing the Pi's connection
-details as environment variables in the same entry — this keeps RaspiMcp
-configured the same way as any other MCP server, with no separate config
-file to manage:
+After installation, register RaspiMcp with the `claude mcp add` CLI — the
+supported way to add a server at user scope (available across all
+projects). There isn't a user-level config file meant to be hand-edited;
+`--scope project` is what writes to a project's `.mcp.json` instead. Pass
+the Pi's connection details as `--env` flags:
 
 **If installed as a dotnet tool:**
 
-```json
-{
-  "mcpServers": {
-    "raspi-mcp": {
-      "command": "raspi-mcp",
-      "env": {
-        "Ssh__CurrentHost": "orleans2",
-        "Ssh__Hosts__orleans2__Host": "orleans2.local",
-        "Ssh__Hosts__orleans2__Username": "pi",
-        "Ssh__Hosts__orleans2__Password": "secret"
-      }
-    }
-  }
-}
+```
+claude mcp add --scope user raspi-mcp --env Ssh__CurrentHost=orleans2 --env Ssh__Hosts__orleans2__Host=orleans2.local --env Ssh__Hosts__orleans2__Username=pi --env Ssh__Hosts__orleans2__Password=secret -- raspi-mcp
 ```
 
 **If using the self-contained binary:**
 
-```json
-{
-  "mcpServers": {
-    "raspi-mcp": {
-      "command": "C:/tools/RaspiMcp.Server.exe",
-      "env": {
-        "Ssh__CurrentHost": "orleans2",
-        "Ssh__Hosts__orleans2__Host": "orleans2.local",
-        "Ssh__Hosts__orleans2__Username": "pi",
-        "Ssh__Hosts__orleans2__Password": "secret"
-      }
-    }
-  }
-}
+```
+claude mcp add --scope user raspi-mcp --env Ssh__CurrentHost=orleans2 --env Ssh__Hosts__orleans2__Host=orleans2.local --env Ssh__Hosts__orleans2__Username=pi --env Ssh__Hosts__orleans2__Password=secret -- C:/tools/RaspiMcp.Server.exe
 ```
 
 **If running from source:**
 
-```json
-{
-  "mcpServers": {
-    "raspi-mcp": {
-      "command": "dotnet",
-      "args": ["run", "--project", "src/RaspiMcp.Server/RaspiMcp.Server.csproj", "-c", "Release"],
-      "cwd": "C:/path/to/raspi-mcp",
-      "env": {
-        "Ssh__CurrentHost": "orleans2",
-        "Ssh__Hosts__orleans2__Host": "orleans2.local",
-        "Ssh__Hosts__orleans2__Username": "pi",
-        "Ssh__Hosts__orleans2__Password": "secret"
-      }
-    }
-  }
-}
+```
+claude mcp add --scope user raspi-mcp --env Ssh__CurrentHost=orleans2 --env Ssh__Hosts__orleans2__Host=orleans2.local --env Ssh__Hosts__orleans2__Username=pi --env Ssh__Hosts__orleans2__Password=secret -- dotnet run --project src/RaspiMcp.Server/RaspiMcp.Server.csproj -c Release
 ```
 
-Use a private key instead of a password by setting `Ssh__Hosts__<alias>__PrivateKey`
-(a filesystem path) instead of `...__Password`.
+**After running `claude mcp add`, restart your `claude` session** (exit and
+relaunch) — a server added while a session is already running won't appear
+in `/mcp` until you do.
+
+Use a private key instead of a password by setting
+`--env Ssh__Hosts__<alias>__PrivateKey=<path>` instead of `...__Password`.
 
 ---
 
@@ -247,9 +213,9 @@ Use a private key instead of a password by setting `Ssh__Hosts__<alias>__Private
 `RaspiMcp.Server` uses the standard .NET Generic Host configuration
 pipeline, which layers environment variables on top of `appsettings.json`
 automatically — no code or file needed. Because of this, the connection
-details for a single Pi host can live directly in the `env` block of the
-MCP server's `mcp.json` entry (see examples above), using `__` (double
-underscore) to express nesting: `Ssh__Hosts__<alias>__Host`, `...__Username`,
+details for a single Pi host can live directly in `--env` flags passed to
+`claude mcp add` (see examples above), using `__` (double underscore) to
+express nesting: `Ssh__Hosts__<alias>__Host`, `...__Username`,
 `...__Password` / `...__PrivateKey`.
 
 This is the recommended approach for a single Pi target — it avoids relying
@@ -260,9 +226,9 @@ place you already configure every other MCP server.
 ### Alternative: appsettings.json file
 
 If you want multiple Pi hosts predefined for `switch_host` without a wall of
-`env` entries, you can still use a file instead: copy
+`--env` flags, you can still use a file instead: copy
 `appsettings.json.example` to `appsettings.json`, place it in whatever
-directory the server process will have as its working directory, and set
-`"cwd"` explicitly in the `mcp.json` entry to that directory (don't rely on
-the default working directory — it isn't guaranteed to be predictable).
-Environment variables set in `mcp.json` still take precedence over the file.
+directory the server process will have as its working directory, and pass
+`--cwd <that directory>` to `claude mcp add` (don't rely on the default
+working directory — it isn't guaranteed to be predictable). Environment
+variables still take precedence over the file when both are present.
