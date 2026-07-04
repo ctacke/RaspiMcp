@@ -11,6 +11,9 @@
 *.sln.docstates
 *.env
 
+# RaspiMcp local Pi credentials — never commit (appsettings.json.example is fine)
+appsettings.json
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
