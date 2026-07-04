@@ -194,6 +194,9 @@ instead, place it in a known folder, and pass `--cwd <that folder>` to
 `claude mcp add`. `env` values still take precedence over the file when both
 are present.
 
-Either way, custom plugins are added by dropping compiled DLLs into a
-`plugins/` folder next to the server binary — see
-[docs/plugin-development.md](plugin-development.md).
+Either way, custom third-party plugins are added by dropping compiled DLLs
+into a `plugins/` folder next to the server binary — see
+[docs/plugin-development.md](plugin-development.md). First-party plugins
+under this repo's own `plugins-src/` (e.g. `RaspiMcp.Gpio`) already ship
+there automatically, both in the NuGet tool package and the release
+binaries — no manual step needed.

@@ -6,6 +6,17 @@
     <ProjectReference Include="..\RaspiMcp.Example\RaspiMcp.Example.csproj" />
   </ItemGroup>
 
+  <!--
+    Plugins under plugins-src/ ship with the tool, but stay decoupled from
+    Server at the code level: ReferenceOutputAssembly=false makes this a
+    build-order dependency only (Server gets no compile-time reference to
+    Gpio's types), so PluginLoader still discovers it purely by scanning
+    plugins/*.dll at runtime, exactly like a third-party drop-in plugin.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\plugins-src\RaspiMcp.Gpio\RaspiMcp.Gpio.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageReference Include="ModelContextProtocol" Version="1.4.0" />
@@ -14,6 +25,8 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\plugins-src\RaspiMcp.Gpio\bin\$(Configuration)\net10.0\RaspiMcp.Gpio.dll"
+          Pack="true" PackagePath="tools\$(TargetFramework)\any\plugins\" />
   </ItemGroup>
 
   <PropertyGroup>

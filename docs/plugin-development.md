@@ -159,12 +159,57 @@ It has no external dependencies beyond `RaspiMcp.Core` and `ModelContextProtocol
 ### Real-World External Plugin Example
 
 `plugins-src/RaspiMcp.Gpio/` in this repository is a real (non-hypothetical)
-drop-in plugin — it's never referenced by `RaspiMcp.Server.csproj`, never
-added to `PluginLoader.cs`'s built-in list, and never added to
-`RaspiMcp.slnx`'s `/src/` folder, exactly like a real third-party plugin
-would be built and shipped separately. It exposes `set_rgb_led` (a
-convenience tool for a 3-pin digital RGB LED) plus generic
-`set_gpio_pin`/`get_gpio_pin` tools, all driving BCM GPIO pins over SSH via
-`pinctrl`. It demonstrates constructor-injecting `ICommandExecutor` without
-ever referencing `RaspiMcp.Ssh`, and a local `HandleError` helper matching
-the same structured-error-JSON shape used by the built-in SSH tools.
+drop-in plugin, loaded purely through `PluginLoader.cs`'s runtime
+`plugins/*.dll` scan — it's never added to `PluginLoader.cs`'s built-in
+list, never added to `RaspiMcp.slnx`'s `/src/` folder, and `RaspiMcp.Server`
+has no compile-time reference to its types, exactly like a real third-party
+plugin. It exposes `set_rgb_led` (a convenience tool for a 3-pin digital RGB
+LED) plus generic `set_gpio_pin`/`get_gpio_pin` tools, all driving BCM GPIO
+pins over SSH via `pinctrl`. It demonstrates constructor-injecting
+`ICommandExecutor` without ever referencing `RaspiMcp.Ssh`, and a local
+`HandleError` helper matching the same structured-error-JSON shape used by
+the built-in SSH tools.
+
+Unlike a genuinely external third-party plugin, though, plugins living
+under this repo's own `plugins-src/` ship automatically with
+`RaspiMcp.Server` — see [Bundling a plugins-src plugin with the
+package](#bundling-a-plugins-src-plugin-with-the-package) below for how
+that's wired up, and follow the same pattern for any new first-party
+plugin you add here.
+
+### Bundling a plugins-src plugin with the package
+
+To make a `plugins-src/` plugin ship automatically with `dotnet tool
+install`/`update` and the release binaries (rather than requiring users to
+build and copy it themselves), `src/RaspiMcp.Server/RaspiMcp.Server.csproj`
+adds two things per plugin:
+
+```xml
+<!-- Build-order dependency only — Server gets no compile-time type reference -->
+<ProjectReference Include="..\..\plugins-src\RaspiMcp.Gpio\RaspiMcp.Gpio.csproj" ReferenceOutputAssembly="false" />
+```
+
+```xml
+<!-- Packs the built DLL into the tool package's own plugins/ subfolder -->
+<None Include="..\..\plugins-src\RaspiMcp.Gpio\bin\$(Configuration)\net10.0\RaspiMcp.Gpio.dll"
+      Pack="true" PackagePath="tools\$(TargetFramework)\any\plugins\" />
+```
+
+`ReferenceOutputAssembly="false"` keeps the plugin decoupled at the code
+level — `PluginLoader.cs` still discovers it purely by scanning
+`plugins/*.dll` at runtime, never by direct reference. The `None Include`
+item only affects `dotnet pack`; it packs the DLL straight into
+`tools/<TFM>/any/plugins/`, which is exactly where the tool's own files
+land on install, so `PluginLoader`'s existing scan finds it with zero
+additional code changes.
+
+This only covers the NuGet tool package. The self-contained release
+binaries (built via `dotnet publish`, not `dotnet pack`) don't pick up
+`None`/`Pack` items at all, so `.github/workflows/release.yml` separately
+publishes each `plugins-src/` plugin once (they're portable, no
+RID-specific dependencies) and copies the DLL into every RID's
+`publish/<rid>/plugins/` folder before zipping.
+
+Adding another first-party plugin later just means repeating both snippets
+above for the new project, and adding one more `dotnet publish` + copy line
+to `release.yml`.

@@ -25,7 +25,7 @@ All commands pass through a safety validator that blocks destructive operations 
 | Log & service inspection | Tail log files, check systemd service status, query journal entries | Read-only helpers built on `tail` / `systemctl status` / `journalctl` |
 | Host management | List configured Pi aliases, view the active host, switch targets at runtime | Switching hosts requires explicit user approval |
 | Plugin extensibility | Load additional tool sets from DLLs dropped into `plugins/` | Plugins run fully trusted — no sandboxing between plugin code and the host process |
-| GPIO pin control *(optional plugin)* | Set/read BCM GPIO pins and drive a 3-pin digital RGB LED via `pinctrl` over SSH | Not built-in — see [Optional Plugins](#optional-plugins). Requires `pinctrl`/`raspi-gpio` on the Pi |
+| GPIO pin control | Set/read BCM GPIO pins and drive a 3-pin digital RGB LED via `pinctrl` over SSH | Ships automatically as a plugin (see [Plugins Shipped With RaspiMcp](#plugins-shipped-with-raspimcp)) — not compiled into the main server assembly, but present with no extra steps. Requires `pinctrl`/`raspi-gpio` on the Pi |
 | Audit logging | Every executed command is recorded with timestamp, host, exit code, and duration | Structured `[AUDIT]` entries via standard `ILogger` — route to a file/Seq/etc. as needed |
 
 See [Available MCP Tools](#available-mcp-tools) below for the exact tool-by-tool breakdown.
@@ -194,11 +194,17 @@ The short version:
 3. Create a `[McpServerToolType]` class with `[McpServerTool]`-attributed methods
 4. Drop the compiled DLL into the `plugins/` folder next to the server binary
 
-### Optional Plugins
+### Plugins Shipped With RaspiMcp
 
-These are **not built into `RaspiMcp.Server`** — they're real, working
-examples of the drop-in plugin mechanism above. Build them yourself and
-copy the output DLL into your own `plugins/` folder to enable them.
+Any plugin whose source lives in this repo under `plugins-src/` ships
+automatically with `RaspiMcp.Server` — installing or updating the tool
+(`dotnet tool install`/`update -g RaspiMcp.Server`) or downloading a release
+binary gets it for free, with no manual build/copy step. It's still loaded
+through the same `plugins/` drop-in mechanism at runtime (not compiled
+directly into `RaspiMcp.Server`'s own assembly), so `PluginLoader` requires
+no code changes to pick it up — the plugin DLL is simply packaged into the
+`plugins/` folder next to the server binary automatically at build/pack
+time.
 
 **`plugins-src/RaspiMcp.Gpio`** — controls BCM GPIO pins over SSH via
 `pinctrl` (falls back to `raspi-gpio` with identical syntax if your Pi
@@ -210,13 +216,7 @@ doesn't have `pinctrl`):
 | `set_gpio_pin` | Configures a single BCM pin as input or output; for input, optionally enables an internal pull-up/pull-down resistor |
 | `get_gpio_pin` | Reads a BCM pin's current mode, pull configuration, and level |
 
-```bash
-cd plugins-src/RaspiMcp.Gpio
-dotnet publish -c Release -o ./publish
-# copy publish/RaspiMcp.Gpio.dll into the plugins/ folder next to your running server binary
-```
-
-See [docs/plugin-development.md](docs/plugin-development.md#real-world-external-plugin-example) for details.
+See [docs/plugin-development.md](docs/plugin-development.md#real-world-external-plugin-example) for details, or to add your own plugin to this list.
 
 ## Security Notes
 
