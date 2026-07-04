@@ -11,7 +11,9 @@ RaspiMcp.sln
 │   └── RaspiMcp.Server      — Host process: loads plugins, starts MCP stdio server.
 ├── tests/
 │   └── RaspiMcp.Tests       — xUnit tests for Core, Ssh, and Server.
-└── plugins/                 — Runtime drop zone for external plugin DLLs.
+├── plugins/                 — Runtime drop zone for external plugin DLLs.
+└── plugins-src/              — Source for real external plugins (not built-in, not referenced by Server).
+    └── RaspiMcp.Gpio        — BCM GPIO / RGB LED control via pinctrl over SSH.
 ```
 
 ### Project Responsibilities
@@ -22,6 +24,7 @@ RaspiMcp.sln
 | `RaspiMcp.Ssh` | Implements Core interfaces using SSH.NET. Owns connection lifecycle. |
 | `RaspiMcp.Example` | Copy-paste starting point for plugin authors. |
 | `RaspiMcp.Server` | Host process. Loads plugins, wires DI, runs the MCP stdio loop. |
+| `RaspiMcp.Gpio` *(plugins-src/, not built-in)* | Real drop-in plugin example — GPIO/RGB LED tools built on `ICommandExecutor`, no `RaspiMcp.Ssh` reference. |
 
 ---
 
