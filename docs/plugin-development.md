@@ -155,3 +155,16 @@ See `src/RaspiMcp.Example/` in this repository for a minimal end-to-end plugin:
 - `Tools/ExampleTools.cs` — `[McpServerToolType]` with a single `hello` tool
 
 It has no external dependencies beyond `RaspiMcp.Core` and `ModelContextProtocol`, making it the ideal copy-paste starting point.
+
+### Real-World External Plugin Example
+
+`plugins-src/RaspiMcp.Gpio/` in this repository is a real (non-hypothetical)
+drop-in plugin — it's never referenced by `RaspiMcp.Server.csproj`, never
+added to `PluginLoader.cs`'s built-in list, and never added to
+`RaspiMcp.slnx`'s `/src/` folder, exactly like a real third-party plugin
+would be built and shipped separately. It exposes `set_rgb_led` (a
+convenience tool for a 3-pin digital RGB LED) plus generic
+`set_gpio_pin`/`get_gpio_pin` tools, all driving BCM GPIO pins over SSH via
+`pinctrl`. It demonstrates constructor-injecting `ICommandExecutor` without
+ever referencing `RaspiMcp.Ssh`, and a local `HandleError` helper matching
+the same structured-error-JSON shape used by the built-in SSH tools.
